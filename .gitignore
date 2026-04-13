@@ -1,0 +1,13 @@
+.Rhistory
+.RData
+.Rproj.user/
+.DS_Store
+
+00_data/
+02_results/
+03_results/
+
+*.rds
+renv/library/
+
+!renv.lock

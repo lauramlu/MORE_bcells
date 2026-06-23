@@ -12,8 +12,8 @@
 # - 00_data/raw/rna_metadata.rds
 #
 # Output:
-# - deg_by_transition_adjP0.05.rds
-# - deg_union_adjP0.05.rds
+# - deg_by_transition_adjP0.05_absFC1.5.rds
+# - deg_union_adjP0.05_absFC1.5.rds
 # - voom_v.rds
 # - model objects and summary files
 ################################################################################
@@ -192,9 +192,14 @@ message("Fit2 coefficients dim (genes x contrasts): ", dim(fit2$coefficients), "
 ## -----------------------------------------------------------------------------
 # 12. DEGs per transition
 ## -----------------------------------------------------------------------------
+# DEGs per transition following Planell et al.:
+# adjusted P value (BH) <= 0.05 and absolute fold change >= 1.5
+# limma reports log2 fold change, so FC >= 1.5 corresponds to:
+# abs(logFC) >= log2(1.5)
 
-# DEGS per transition: adj.P.Val (BH) < 0.05, no logFC threshold
 padj_thr <- 0.05
+fc_thr <- 1.5
+logfc_thr <- log2(fc_thr)
 
 deg_by_transition <- lapply(colnames(fit2$coefficients), function(coef_name) {
   tt <- topTable(
@@ -204,7 +209,11 @@ deg_by_transition <- lapply(colnames(fit2$coefficients), function(coef_name) {
     adjust.method = "BH",
     sort.by = "P"
   )
-  tt[tt$adj.P.Val < padj_thr, ]
+  
+  tt[
+    tt$adj.P.Val <= padj_thr &
+      abs(tt$logFC) >= logfc_thr,
+  ]
 })
 
 names(deg_by_transition) <- colnames(fit2$coefficients)
@@ -215,10 +224,19 @@ deg_counts <- sapply(deg_by_transition, nrow)
 message("DEGs per transition: \n")
 print(deg_counts)
 
-# deg_union = dynamic genes (DEG in at least one transition)
-# used to filter targets for MORE
+# DEG union = dynamic genes, significant in at least one transition
+# following Planell et al. criteria: adj.P.Val <= 0.05 and |FC| >= 1.5
 deg_union <- unique(unlist(lapply(deg_by_transition, rownames)))
-message("Union of DEGs across transitions (unique genes): ",length(deg_union), "\n")
+
+message(
+  "Union of DEGs across transitions (unique genes), adj.P.Val <= ",
+  padj_thr,
+  " and |FC| >= ",
+  fc_thr,
+  ": ",
+  length(deg_union),
+  "\n"
+)
 
 ## -----------------------------------------------------------------------------
 # 13. Save objects and reproducibility info
@@ -234,12 +252,34 @@ saveRDS(fit2,  file.path(out_dir, "fit2_ebayes.rds"))
 # DEG results
 saveRDS(
   deg_by_transition,
-  file.path(out_dir, sprintf("deg_by_transition_adjP%.2f.rds", padj_thr))
+  file.path(
+    out_dir,
+    sprintf("deg_by_transition_adjP%.2f_absFC%.1f.rds", padj_thr, fc_thr)
+  )
 )
 
 saveRDS(
   deg_union,
-  file.path(out_dir, sprintf("deg_union_adjP%.2f.rds", padj_thr))
+  file.path(
+    out_dir,
+    sprintf("deg_union_adjP%.2f_absFC%.1f.rds", padj_thr, fc_thr)
+  )
+)
+
+write.csv(
+  deg_counts,
+  file.path(
+    out_dir,
+    sprintf("deg_counts_by_transition_adjP%.2f_absFC%.1f.csv", padj_thr, fc_thr)
+  )
+)
+
+writeLines(
+  deg_union,
+  file.path(
+    out_dir,
+    sprintf("deg_union_for_MORE_adjP%.2f_absFC%.1f.txt", padj_thr, fc_thr)
+  )
 )
 
 # Summaries

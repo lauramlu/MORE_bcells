@@ -9,7 +9,7 @@
 #
 # Input:
 # - 02_results/02_DEG/voom_v.rds
-# - 02_results/02_DEG/deg_union_adjP0.05.rds
+# - 02_results/02_DEG/deg_union_adjP0.05_absFC1.5.rds
 # - 00_data/raw/rna_metadata.rds
 # - 00_data/processed/atac_norm_data.rds
 # - 00_data/processed/atac_dba_by_transitions.rds
@@ -54,7 +54,7 @@ v <- readRDS(file.path(results_dir, "voom_v.rds"))
 expr <- v$E  # genes x samples
 
 # DEG union
-deg <- readRDS(file.path(results_dir, "deg_union_adjP0.05.rds"))
+deg <- readRDS(file.path(results_dir, "deg_union_adjP0.05_absFC1.5.rds"))
 
 # metadata
 metadata <- readRDS(file.path(data_raw_dir, "rna_metadata.rds"))
@@ -87,6 +87,8 @@ stopifnot(!anyDuplicated(metadata$Sample.Name))
 #-------------------------------------------------------------------------------
 # 4. filtering genes (DEG)
 #-------------------------------------------------------------------------------
+# adj.P.Val <= 0.05 and |FC| >= 1.5
+
 # Filter genes + rename samples
 expr_deg <- expr[deg, , drop = FALSE]
 colnames(expr_deg) <- metadata$Sample.Name
